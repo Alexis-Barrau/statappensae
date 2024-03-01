@@ -1,0 +1,108 @@
+Ce notebook permet de configurer un environnement Python. Il n'est pas prévu pour s'exécuter seul, des options sont à choisir.
+
+On commence par vérifier que le package reticulate, qui assure l'interface entre R et Python, est bien installé.
+
+```{r include=FALSE}
+if (!'reticulate' %in% installed.packages()) install.packages('reticulate')
+if (!is.loaded("reticulate")) library(reticulate)
+```
+
+**Pour une exécution sur le Datalab**
+
+On installe la distribution Miniconda, plus légère, on créé un environnement Python puis l'on charge les packages nécessaires. C'est terminé !
+
+```{r include=FALSE}
+install_miniconda()
+
+conda_create("r-reticulate-conda")
+use_condaenv("r-reticulate-conda")
+
+py_install("pyarrow")
+py_install('chardet')
+py_install('pandas')
+py_install('requests')
+py_install('s3fs')
+py_install('tqdm')
+```
+
+**Pour une exécution locale**
+
+La configuration d'une installation persistante est plus délicate, notamment à cause des environnements virtuels que les commandes dédiées n'activent pas toujours correctement.
+
+Si Python n'est pas déjà installé, il est recommander de l'installer de manière indépendante, comme le langage R. Il est aussi possible de l'installer depuis R, par commodité.
+
+```{r eval=FALSE}
+install_python()
+```
+
+On vérifie que Python est bien détecté par R avec la commande ci-dessous. S'il n'apparaît pas, il faut se rendre dans les options globales de RStudio, rubrique Python, puis choisir un interpréteur au niveau du système, sans activer automatiquement les environnements locaux.
+
+```{r}
+py_config()
+```
+
+Si l'on souhaite utiliser un environnement virtuel existant, en supposant qu'il est déjà actif, il faut installer les packages suivants.
+
+```{r eval=FALSE, include=FALSE}
+py_install('chardet')
+py_install('pandas')
+py_install('requests')
+py_install('s3fs')
+py_install('tqdm')
+py_install('pyarrow')
+```
+
+Il est toutefois préférable de créer un environnement virtuel dédié au projet, intégrant d'emblée les packages nécessaires.
+
+```{r}
+virtualenv_create(
+  envname = "r-reticulate-statapp",
+  packages = c("pyarrow", "chardet", "pandas", "requests", "s3fs", "tqdm"),
+  force = TRUE)
+```
+
+Pour utiliser cet environnement, il est nécessaire de réinitialiser reticulate. Le code suivant le désinstalle puis le réinstalle. Il génère une invite à redémarrer R : c'est préférable.
+
+```{r}
+Sys.setenv(RETICULATE_PYTHON = "~/.virtualenvs/r-reticulate-statapp/bin/python")
+remove.packages("reticulate")
+install.packages("reticulate")
+library("reticulate")
+```
+
+**Vérifications**
+
+On s'assure pour terminer que la configuration est correcte.
+
+Est-ce que le chemin Python correspond bien à l'environnement virtuel, plutôt qu'à la distribution principale ?
+
+```{r}
+py_config()
+```
+
+Est-ce que le package pyarrow, parfois capricieux, est correctement chargé ?.
+
+```{r}
+# Test depuis R
+if(py_module_available("pyarrow")) {print("Pyarrow is available.")
+  } else {
+    print("Warning, Pyarrow is not available.")}
+```
+
+```{python}
+# Test depuis Python
+try:
+  import pyarrow
+  print("Pyarrow library imported successfully.")
+except ImportError:
+  print("Importation of pyarrow library failed.")
+```
+
+Si des erreurs surviennent, c'est probablement car l'environnement virtuel n'est pas activé. Il faut alors le sélectionner depuis les options du projet dans RStudio, et redémarrer R. On peut tout de même vérifier s'il existe bien, à l'aide des commandes suivantes.
+
+```{r}
+# Miniconda
+conda_list()
+# Python
+virtualenv_list()
+```
